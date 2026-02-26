@@ -1,0 +1,13 @@
+stages:
+  - test
+
+python-tests:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - pip install -r requirements.txt
+    - python -m pytest tests -q
+  cache:
+    key: "$CI_COMMIT_REF_SLUG-pip"
+    paths:
+      - .cache/pip
