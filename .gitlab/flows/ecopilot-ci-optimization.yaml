@@ -1,0 +1,55 @@
+# EcoPilot CI Optimization Flow
+# This flow orchestrates multiple agents to analyze, optimize and fix CI pipelines
+
+name: EcoPilot CI Optimization
+description: |
+  Automated CI/CD pipeline analysis, cost estimation, and AI-powered optimization.
+  
+  Flow steps:
+  1. Analyze CI configuration for anti-patterns
+  2. Estimate cost and carbon impact
+  3. Generate optimization suggestions
+  4. Create automated fix merge requests
+
+trigger:
+  type: merge_request
+  action: [opened, reopened, update]
+
+agents:
+  - name: ecopilot-optimizer
+    role: primary
+    prompt: |
+      Analyze the merge request's CI configuration.
+      
+      Steps:
+      1. Fetch .gitlab-ci.yml from the MR
+      2. Run analysis for common anti-patterns:
+         - Missing cache configuration
+         - Redundant jobs
+         - Inefficient job dependencies
+         - Unoptimized Docker layer caching
+         - Sequential jobs that could be parallel
+      3. Calculate potential savings:
+         - Pipeline duration (minutes)
+         - CI cost (USD) - $0.008/min per runner
+         - Carbon proxy (kgCO2e) - 0.02 kg/min
+      4. Generate a detailed report with findings and recommendations
+      5. If high-severity issues found, generate optimized .gitlab-ci.yml
+      6. Create a fix MR with the optimized configuration
+
+output:
+  - type: merge_request_comment
+    content: |
+      ## EcoPilot CI Optimization Report
+      
+      {{analysis_results}}
+      
+      ### Potential Savings
+      - Time: {{time_savings}} minutes
+      - Cost: ${{cost_savings}} USD
+      - Carbon: {{carbon_savings}} kgCO2e
+      
+      {{#if fix_mr_url}}
+      ### Auto-fix Available
+      A fix MR has been created: {{fix_mr_url}}
+      {{/if}}
