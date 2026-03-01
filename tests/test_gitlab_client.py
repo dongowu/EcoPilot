@@ -36,3 +36,49 @@ def test_list_pipelines_returns_list(monkeypatch) -> None:
     client = GitLabClient(base_url="https://gitlab.example/api/v4", token="t")
     pipelines = client.list_pipelines(1, "main", 10)
     assert [p["id"] for p in pipelines] == [1, 2]
+
+
+def test_create_branch(monkeypatch) -> None:
+    def fake_request(method, url, headers=None, params=None, json=None, timeout=None):  # noqa: ANN001
+        _ = (method, url, headers, params, timeout)
+        assert json == {"branch": "feature/new-feature", "ref": "main"}
+        return FakeResponse({"name": "feature/new-feature", "protected": False})
+
+    monkeypatch.setattr("httpx.request", fake_request)
+    client = GitLabClient(base_url="https://gitlab.example/api/v4", token="t")
+    result = client.create_branch(1, "feature/new-feature", "main")
+    assert result["name"] == "feature/new-feature"
+
+
+def test_commit_file(monkeypatch) -> None:
+    def fake_request(method, url, headers=None, params=None, json=None, timeout=None):  # noqa: ANN001
+        _ = (method, url, headers, params, timeout)
+        assert json["branch"] == "main"
+        assert json["commit_message"] == "Add new file"
+        content = base64.b64decode(json["content"]).decode("utf-8")
+        assert content == "Hello World"
+        return FakeResponse({"file_path": "test.txt", "branch": "main"})
+
+    monkeypatch.setattr("httpx.request", fake_request)
+    client = GitLabClient(base_url="https://gitlab.example/api/v4", token="t")
+    result = client.commit_file(1, "main", "test.txt", "Hello World", "Add new file")
+    assert result["file_path"] == "test.txt"
+
+
+def test_create_mr(monkeypatch) -> None:
+    def fake_request(method, url, headers=None, params=None, json=None, timeout=None):  # noqa: ANN001
+        _ = (method, url, headers, params, timeout)
+        assert json == {
+            "source_branch": "feature/new-feature",
+            "target_branch": "main",
+            "title": "Add new feature",
+            "description": "This adds a new feature",
+        }
+        return FakeResponse({"iid": 1, "state": "opened"})
+
+    monkeypatch.setattr("httpx.request", fake_request)
+    client = GitLabClient(base_url="https://gitlab.example/api/v4", token="t")
+    result = client.create_mr(
+        1, "feature/new-feature", "main", "Add new feature", "This adds a new feature"
+    )
+    assert result["iid"] == 1

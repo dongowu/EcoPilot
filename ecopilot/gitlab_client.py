@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from urllib.parse import quote_plus
 
 import httpx
@@ -11,7 +12,13 @@ class GitLabClient:
         self._headers = {"PRIVATE-TOKEN": token} if token else {}
         self._timeout = timeout
 
-    def _request(self, method: str, path: str, params: dict | None = None, json: dict | None = None) -> dict | list:
+    def _request(
+        self,
+        method: str,
+        path: str,
+        params: dict | None = None,
+        json: dict | None = None,
+    ) -> dict | list:
         url = f"{self._base_url}{path}"
         response = httpx.request(
             method=method,
@@ -27,13 +34,10 @@ class GitLabClient:
     def get_ci_config(self, project_id: int, ref: str) -> str:
         path = f"/projects/{project_id}/repository/files/{quote_plus('.gitlab-ci.yml')}"
         data = self._request("GET", path, params={"ref": ref})
-        # GitLab file API returns base64 content by default; many self-managed instances can return raw.
         content = data.get("content", "")
         if not isinstance(content, str):
             raise RuntimeError("invalid CI content")
         try:
-            import base64
-
             return base64.b64decode(content).decode("utf-8")
         except Exception:
             return content
@@ -63,5 +67,56 @@ class GitLabClient:
 
     def create_issue(self, project_id: int, title: str, description: str) -> dict:
         path = f"/projects/{project_id}/issues"
-        data = self._request("POST", path, json={"title": title, "description": description})
+        data = self._request(
+            "POST", path, json={"title": title, "description": description}
+        )
+        return dict(data) if isinstance(data, dict) else {}
+
+    def create_branch(self, project_id: int, branch: str, ref: str) -> dict:
+        """Create a new branch from ref (commit SHA or branch name)."""
+        path = f"/projects/{project_id}/repository/branches"
+        data = self._request("POST", path, json={"branch": branch, "ref": ref})
+        return dict(data) if isinstance(data, dict) else {}
+
+    def commit_file(
+        self,
+        project_id: int,
+        branch: str,
+        file_path: str,
+        content: str,
+        commit_message: str,
+    ) -> dict:
+        """Create or update a file in repository."""
+        path = f"/projects/{project_id}/repository/files/{quote_plus(file_path)}"
+        data = self._request(
+            "PUT",
+            path,
+            json={
+                "branch": branch,
+                "content": base64.b64encode(content.encode()).decode(),
+                "commit_message": commit_message,
+            },
+        )
+        return dict(data) if isinstance(data, dict) else {}
+
+    def create_mr(
+        self,
+        project_id: int,
+        source_branch: str,
+        target_branch: str,
+        title: str,
+        description: str,
+    ) -> dict:
+        """Create a merge request."""
+        path = f"/projects/{project_id}/merge_requests"
+        data = self._request(
+            "POST",
+            path,
+            json={
+                "source_branch": source_branch,
+                "target_branch": target_branch,
+                "title": title,
+                "description": description,
+            },
+        )
         return dict(data) if isinstance(data, dict) else {}

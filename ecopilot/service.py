@@ -5,6 +5,7 @@ from ecopilot.analyzer import run_analysis
 from ecopilot.collector import collect_ci_context
 from ecopilot.models import MergeRequestContext
 from ecopilot.reporter import Reporter
+from ecopilot.repair import AIRepairService
 
 
 class NullSink:
@@ -36,6 +37,9 @@ class EcoPilotService:
         self._carbon_kg_per_min = carbon_kg_per_min
         self._enable_auto_label = enable_auto_label
         self._enable_auto_issue = enable_auto_issue
+        self._repair_service = AIRepairService(
+            reporter._llm_client if reporter else None
+        )
 
     def process_event(self, context: MergeRequestContext, payload: dict) -> dict:
         _ = payload
@@ -60,6 +64,21 @@ class EcoPilotService:
             carbon_kg_per_min=self._carbon_kg_per_min,
         )
         body, llm_mode = self._reporter.render(context, findings, impact)
+        fix_mr_url = None
+        if findings:
+            fix_content = self._repair_service.generate_fix(collected.ci_yaml, findings)
+            if fix_content:
+                fix_mr_info = self._repair_service.create_fix_mr(
+                    gitlab_client=self._gitlab_client,
+                    project_id=context.project_id,
+                    source_branch=context.source_branch,
+                    target_branch=context.target_branch,
+                    fix_content=fix_content,
+                    original_mr_iid=context.mr_iid,
+                )
+                if fix_mr_info:
+                    fix_mr_url = fix_mr_info.get("web_url")
+                    body += f"\n\n💡 **Auto-fix available**: [{fix_mr_info.get('iid')}]({fix_mr_url})"
         posted = self._publisher.publish_comment(context, body)
         optional_actions = {"label_applied": False, "issue_created": False}
         if posted:
@@ -83,6 +102,7 @@ class EcoPilotService:
             "comment_posted": posted,
             "label_applied": optional_actions["label_applied"],
             "issue_created": optional_actions["issue_created"],
+            "fix_mr_url": fix_mr_url,
             "finding_count": len(findings),
             "llm_mode": llm_mode,
             "status": "processed",
