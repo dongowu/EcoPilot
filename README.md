@@ -1,6 +1,10 @@
 # EcoPilot CI Sustainability Flow
 
-EcoPilot is an event-driven GitLab MR assistant that detects CI waste, estimates cost/carbon proxy impact, and posts optimization suggestions automatically.
+![GitLab AI Hackathon 2026](https://img.shields.io/badge/GitLab-AI%20Hackathon%202026-blue)
+![License: MIT](https://img.shields.io/badge/License-MIT-green)
+![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)
+
+EcoPilot is an event-driven GitLab MR assistant that detects CI waste, estimates cost/carbon proxy impact, and automatically generates AI-powered optimization fixes.
 
 ## What It Does
 
@@ -11,9 +15,34 @@ EcoPilot is an event-driven GitLab MR assistant that detects CI waste, estimates
   - pipeline duration (minutes)
   - CI cost (USD)
   - carbon proxy (`kgCO2e`)
+- **AI-Powered Auto-Fix**: Generates optimized CI configuration using LLM and creates automatic fix MRs
 - Generates MR report (Anthropic mode when integrated, deterministic fallback otherwise).
 - Optionally applies follow-up actions: add MR labels and open optimization issues for high-severity findings.
 - Stores analysis records for dashboarding (BigQuery sink interface).
+
+## Key Features
+
+### 1. CI Anti-Pattern Detection
+- Missing cache configuration
+- Sequential jobs that could run in parallel
+- Redundant builds and tests
+- Inefficient Docker layer caching
+- Over-provisioned runner resources
+
+### 2. Cost & Carbon Estimation
+- Runner cost: $0.008/min (GitLab shared runners)
+- Carbon proxy: 0.02 kgCO2e/min
+- Quantified savings in USD and kgCO2e
+
+### 3. AI Auto-Repair
+- Generates optimized .gitlab-ci.yml using Claude
+- Automatically creates fix merge requests
+- Links fix MR in original MR comments
+
+### 4. GitLab Duo Agent Integration
+- Custom agent: `ecopilot-optimizer`
+- Flow: `ecopilot-ci-optimization`
+- Chat rules for CI optimization guidance
 
 ## Project Layout
 
@@ -86,3 +115,31 @@ ECOPILOT_WEBHOOK_SECRET=your_secret ./scripts/replay_webhook.sh
 
 - Current BigQuery integration is pluggable through `BigQuerySink`; wire a real client in production.
 - LLM generation is abstracted in `Reporter`; inject Duo/Anthropic client in deployment runtime.
+
+## GitLab Duo Agent Configuration
+
+### Enable the Agent
+1. Create a GitLab project and push this code
+2. Go to **Automate → Agents**
+3. Create new agent with name `ecopilot-optimizer`
+4. Configure as specified in `.gitlab/agents/ecopilot-optimizer/config.yaml`
+
+### Enable the Flow
+1. Go to **Automate → Flows**
+2. Import `.gitlab/flows/ecopilot-ci-optimization.yaml`
+3. Configure triggers for merge request events
+
+## Architecture
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│ GitLab MR   │────▶│  EcoPilot    │────▶│  Claude API │
+│  Webhook    │     │  分析引擎    │     │  生成修复   │
+└─────────────┘     └──────────────┘     └─────────────┘
+       │                   │                    │
+       ▼                   ▼                    ▼
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│ MR Comment  │◀────│  修复 MR     │     │  成本/碳排  │
+│ 优化建议    │     │  (自动创建)  │     │   估算      │
+└─────────────┘     └──────────────┘     └─────────────┘
+```
