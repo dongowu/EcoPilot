@@ -1,15 +1,30 @@
 # EcoPilot CI Optimization Flow
-# This flow orchestrates multiple agents to analyze, optimize and fix CI pipelines
+# GitLab AI Hackathon 2026 - Green Agent Prize Entry
+#
+# This flow orchestrates automated CI/CD optimization:
+# 1. Triggered on MR open/update
+# 2. Analyze CI configuration
+# 3. Calculate cost & carbon impact
+# 4. Generate optimization report
+# 5. Create fix MR if beneficial
 
-name: EcoPilot CI Optimization
+name: EcoPilot CI Optimization Flow
 description: |
-  Automated CI/CD pipeline analysis, cost estimation, and AI-powered optimization.
+  Automated CI/CD pipeline analysis for sustainability.
   
-  Flow steps:
-  1. Analyze CI configuration for anti-patterns
-  2. Estimate cost and carbon impact
-  3. Generate optimization suggestions
-  4. Create automated fix merge requests
+  This flow helps teams reduce CI costs and carbon emissions
+  by analyzing and optimizing their GitLab CI configurations.
+  
+  ## Features
+  - Automatic MR analysis
+  - Cost & carbon quantification
+  - AI-powered optimization suggestions
+  - Auto-fix merge requests
+  
+  ## Target Impact
+  - 50-80% reduction in CI costs
+  - 50-80% reduction in carbon emissions
+  - Faster pipeline execution
 
 trigger:
   type: merge_request
@@ -19,37 +34,60 @@ agents:
   - name: ecopilot-optimizer
     role: primary
     prompt: |
-      Analyze the merge request's CI configuration.
+      Analyze the merge request's CI configuration and provide optimization suggestions.
       
-      Steps:
-      1. Fetch .gitlab-ci.yml from the MR
+      ## Steps
+      1. Fetch `.gitlab-ci.yml` from the merge request
       2. Run analysis for common anti-patterns:
          - Missing cache configuration
-         - Redundant jobs
-         - Inefficient job dependencies
-         - Unoptimized Docker layer caching
-         - Sequential jobs that could be parallel
-      3. Calculate potential savings:
+         - Sequential jobs that could run in parallel
+         - Redundant build steps
+         - Inefficient Docker layer caching
+         - Over-provisioned runner resources
+      3. Calculate current and potential metrics:
          - Pipeline duration (minutes)
-         - CI cost (USD) - $0.008/min per runner
-         - Carbon proxy (kgCO2e) - 0.02 kg/min
-      4. Generate a detailed report with findings and recommendations
-      5. If high-severity issues found, generate optimized .gitlab-ci.yml
+         - CI cost ($0.008/min per runner)
+         - Carbon proxy (0.02 kgCO2e/min)
+      4. Generate a detailed report with:
+         - Specific findings with severity levels
+         - Quantified impact for each issue
+         - Prioritized recommendations
+         - Estimated savings (time, cost, carbon)
+      5. If high-severity issues found, generate optimized CI config
       6. Create a fix MR with the optimized configuration
+      
+      ## Response Format
+      Use markdown with tables for findings. Include:
+      - Pipeline overview stats
+      - Findings table (issue, severity, impact)
+      - Recommendations list
+      - Savings summary
+      
+      Be specific and quantified. Use emoji for visual appeal.
 
 output:
   - type: merge_request_comment
     content: |
-      ## EcoPilot CI Optimization Report
+      ## 🌿 EcoPilot CI Optimization Report
       
-      {{analysis_results}}
+      ### 📊 Pipeline Analysis
+      {{pipeline_stats}}
       
-      ### Potential Savings
-      - Time: {{time_savings}} minutes
-      - Cost: ${{cost_savings}} USD
-      - Carbon: {{carbon_savings}} kgCO2e
+      ### 🎯 Findings
+      {{findings_table}}
+      
+      ### 💡 Recommendations
+      {{recommendations}}
+      
+      ### 🌱 Potential Savings
+      - ⏱️ Time: {{time_savings}} (-{{time_percent}}%)
+      - 💰 Cost: ${{cost_savings}} (-{{cost_percent}}%)
+      - 🌿 Carbon: {{carbon_savings}} kgCO2e (-{{carbon_percent}}%)
+      
+      ---
+      *Powered by EcoPilot - Green CI Optimization Agent*
       
       {{#if fix_mr_url}}
-      ### Auto-fix Available
+      ### 🚀 Auto-Fix Available
       A fix MR has been created: {{fix_mr_url}}
       {{/if}}
