@@ -1,0 +1,155 @@
+name: "EcoPilot Flow"
+description: "A public GitLab Duo flow that acts as a green CI teammate: triage waste, quantify impact, prepare remediation, and guide safe merge decisions."
+public: true
+definition:
+  version: v1
+  environment: ambient
+
+  components:
+    - name: "triage_agent"
+      type: AgentComponent
+      prompt_id: "triage_prompt"
+      inputs:
+        - "context:goal"
+      toolset:
+        - read_file
+        - read_files
+      ui_log_events:
+        - on_agent_final_answer
+        - on_tool_execution_success
+
+    - name: "impact_agent"
+      type: AgentComponent
+      prompt_id: "impact_prompt"
+      inputs:
+        - "triage_agent"
+      toolset:
+        - read_file
+        - read_files
+      ui_log_events:
+        - on_agent_final_answer
+
+    - name: "remediation_agent"
+      type: AgentComponent
+      prompt_id: "remediation_prompt"
+      inputs:
+        - "triage_agent"
+        - "impact_agent"
+      toolset:
+        - read_file
+        - read_files
+      ui_log_events:
+        - on_agent_final_answer
+
+    - name: "guardrail_agent"
+      type: AgentComponent
+      prompt_id: "guardrail_prompt"
+      inputs:
+        - "remediation_agent"
+      toolset:
+        - read_file
+        - read_files
+      ui_log_events:
+        - on_agent_final_answer
+
+  prompts:
+    - prompt_id: "triage_prompt"
+      name: "EcoPilot Triage Prompt"
+      prompt_template:
+        system: |
+          You are EcoPilot's triage agent inside the main EcoPilot Duo flow.
+
+          Inspect the GitLab CI context and identify the highest-impact sustainability issues.
+
+          Focus on CI patterns that create wasted build time, excess runner usage, and unnecessary cloud spend.
+
+          Return:
+          - pipeline overview
+          - top findings with severity
+          - why each issue matters
+        user: |
+          {{goal}}
+        placeholder: history
+      unit_primitives: []
+      params:
+        timeout: 180
+
+    - prompt_id: "impact_prompt"
+      name: "EcoPilot Impact Prompt"
+      prompt_template:
+        system: |
+          You are EcoPilot's impact agent inside the main EcoPilot Duo flow.
+
+          Convert the triage result into quantified impact.
+
+          Express impact in:
+          - minutes saved
+          - CI cost saved
+          - carbon reduced
+          - monthly and annual Google Cloud savings when possible
+
+          Make the output easy to paste into a merge request discussion.
+        user: |
+          {{triage_agent}}
+        placeholder: history
+      unit_primitives: []
+      params:
+        timeout: 180
+
+    - prompt_id: "remediation_prompt"
+      name: "EcoPilot Remediation Prompt"
+      prompt_template:
+        system: |
+          You are EcoPilot's remediation agent inside the main EcoPilot Duo flow.
+
+          Propose safe, mergeable GitLab CI changes based on the triage and impact summaries.
+
+          Prefer cache improvements, rules:changes filters, leaner retry or timeout settings, and needs-based parallelization.
+
+          Return:
+          - top remediation actions
+          - expected benefit
+          - merge rationale
+        user: |
+          Triage:
+          {{triage_agent}}
+
+          Impact:
+          {{impact_agent}}
+        placeholder: history
+      unit_primitives: []
+      params:
+        timeout: 180
+
+    - prompt_id: "guardrail_prompt"
+      name: "EcoPilot Guardrail Prompt"
+      prompt_template:
+        system: |
+          You are EcoPilot's guardrail agent inside the main EcoPilot Duo flow.
+
+          Review the proposed remediation and return:
+          - merge confidence
+          - main risk
+          - rollback note
+          - post-merge checks
+
+          Be concrete and brief.
+        user: |
+          {{remediation_agent}}
+        placeholder: history
+      unit_primitives: []
+      params:
+        timeout: 180
+
+  routers:
+    - from: "triage_agent"
+      to: "impact_agent"
+    - from: "impact_agent"
+      to: "remediation_agent"
+    - from: "remediation_agent"
+      to: "guardrail_agent"
+    - from: "guardrail_agent"
+      to: "end"
+
+  flow:
+    entry_point: "triage_agent"
