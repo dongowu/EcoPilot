@@ -77,6 +77,45 @@ def analyze_ci(ci_yaml: str, pipelines: list[dict]) -> list[Finding]:
             )
         )
 
+    artifact_jobs = _detect_artifact_expiration_issues(jobs)
+    if artifact_jobs:
+        findings.append(
+            Finding(
+                rule_id="artifact_expiration",
+                title="Artifacts may be retained longer than necessary",
+                severity="low",
+                evidence={"jobs": artifact_jobs},
+                recommendation="Set expire_in to reduce artifact storage costs. Default is 30 days; consider 1-7 days for CI artifacts.",
+                savings_ratio=0.03,
+            )
+        )
+
+    parallel_ops = _detect_parallel_opportunities(jobs)
+    if parallel_ops:
+        findings.append(
+            Finding(
+                rule_id="parallel_opportunities",
+                title="Jobs could run in parallel but are serialized",
+                severity="medium",
+                evidence={"jobs": parallel_ops},
+                recommendation="Add needs: [] to independent jobs to run them in parallel instead of sequentially.",
+                savings_ratio=0.2,
+            )
+        )
+
+    resource_jobs = _detect_resource_optimization(jobs)
+    if resource_jobs:
+        findings.append(
+            Finding(
+                rule_id="resource_optimization",
+                title="Jobs may be over-provisioned with resources",
+                severity="low",
+                evidence={"jobs": resource_jobs},
+                recommendation="Review and reduce CPU/memory requests for jobs that don't need high resources.",
+                savings_ratio=0.05,
+            )
+        )
+
     return findings
 
 
@@ -181,7 +220,44 @@ def _detect_retry_timeout_issues(jobs: list[dict]) -> list[str]:
     return offenders
 
 
-def _detect_serial_pipeline_structure(cfg: dict, pipelines: list[dict]) -> bool:
+def _detect_artifact_expiration_issues(jobs: list[dict]) -> list[str]:
+    """Detect jobs with artifacts but no expiration policy."""
+    offenders: list[str] = []
+    for job in jobs:
+        artifacts = job.get("artifacts")
+        if artifacts and isinstance(artifacts, dict):
+            if "expire_in" not in artifacts:
+                offenders.append(job["name"])
+    return offenders
+
+
+def _detect_parallel_opportunities(jobs: list[dict]) -> list[str]:
+    """Detect jobs that could run in parallel but don't have needs defined."""
+    offenders: list[str] = []
+    for job in jobs:
+        if not job.get("needs") and job.get("stage") == "test":
+            offenders.append(job["name"])
+    return offenders
+
+
+def _detect_resource_optimization(jobs: list[dict]) -> list[str]:
+    """Detect jobs with potentially excessive resource requests."""
+    offenders: list[str] = []
+    for job in jobs:
+        resources = job.get("resources", {})
+        if isinstance(resources, dict):
+            limits = resources.get("limits", {})
+            if isinstance(limits, dict):
+                cpu = str(limits.get("cpus", "")).strip()
+                memory = str(limits.get("memory", "")).strip()
+                if cpu and float(cpu.replace("m", "")) > 2000:
+                    offenders.append(job["name"])
+                elif memory and float(memory.replace("Mi", "").replace("Gi", "")) > 2048:
+                    offenders.append(job["name"])
+    return offenders
+
+
+
     stages = cfg.get("stages") or []
     if len(stages) < 3:
         return False

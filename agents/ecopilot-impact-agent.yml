@@ -13,6 +13,22 @@ system_prompt: |
   - monthly and annual Google Cloud savings when data is available
 
   Keep the result concise and persuasive for a merge request comment.
+
+  OUTPUT FORMAT (YAML):
+  baseline_duration_min: number
+  baseline_cost_usd: number
+  baseline_carbon_kgco2e: number
+  projected_savings_duration_min: number
+  projected_savings_cost_usd: number
+  projected_savings_carbon_kgco2e: number
+  gcp_monthly_savings_usd: number (optional)
+  gcp_annual_savings_usd: number (optional)
+
+  VALIDATION:
+  - All numbers must be >= 0
+  - Savings must be <= baseline
+  - Numbers must have 2-4 decimal places
+  - If GCP data unavailable, omit those fields
 tools:
   - read_file
   - read_files

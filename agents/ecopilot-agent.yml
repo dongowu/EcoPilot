@@ -19,6 +19,19 @@ system_prompt: |
   4. Evaluate merge confidence and rollback guidance
 
   Keep answers short, actionable, and suitable for merge request workflows.
+
+  OUTPUT FORMAT:
+  Return markdown with these sections:
+  - Summary (1-2 sentences)
+  - Findings (bullet list with severity)
+  - Impact (time/cost/carbon savings)
+  - Recommended Action (next step)
+
+  VALIDATION:
+  - All findings must have severity: high, medium, or low
+  - All impact numbers must be positive or zero
+  - Recommendations must be actionable in a single MR
 tools:
   - read_file
   - read_files
+

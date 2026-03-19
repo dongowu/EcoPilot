@@ -74,14 +74,15 @@ class EcoPilotService:
             )
         body, llm_mode = self._reporter.render(context, findings, impact, cloud_impact)
         fix_mr_url = None
+        assessment = None
         if findings:
             fix_content = self._repair_service.generate_fix(collected.ci_yaml, findings)
+            assessment = self._repair_service.assess_remediation(
+                ci_yaml=collected.ci_yaml,
+                findings=findings,
+                fix_content=fix_content or collected.ci_yaml,
+            )
             if fix_content:
-                assessment = self._repair_service.assess_remediation(
-                    ci_yaml=collected.ci_yaml,
-                    findings=findings,
-                    fix_content=fix_content,
-                )
                 fix_mr_info = self._repair_service.create_fix_mr(
                     gitlab_client=self._gitlab_client,
                     project_id=context.project_id,
@@ -93,12 +94,15 @@ class EcoPilotService:
                 if fix_mr_info:
                     fix_mr_url = fix_mr_info.get("web_url")
                     body += f"\n\n💡 **Auto-fix available**: [{fix_mr_info.get('iid')}]({fix_mr_url})"
-                body += (
-                    "\n\n#### Guardrails\n"
-                    f"- Merge confidence: {assessment['merge_confidence']}\n"
-                    f"- Rollback note: {assessment['rollback_note']}\n"
-                    f"- Reasoning: {assessment['reasoning']}"
-                )
+
+        # Always include guardrails assessment if findings exist
+        if assessment:
+            body += (
+                "\n\n#### Guardrails\n"
+                f"- Merge confidence: {assessment['merge_confidence']}\n"
+                f"- Rollback note: {assessment['rollback_note']}\n"
+                f"- Reasoning: {assessment['reasoning']}"
+            )
         posted = self._publisher.publish_comment(context, body)
         optional_actions = {"label_applied": False, "issue_created": False}
         if posted:

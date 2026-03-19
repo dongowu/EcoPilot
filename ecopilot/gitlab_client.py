@@ -38,13 +38,8 @@ class GitLabClient:
         if not isinstance(content, str):
             raise RuntimeError("invalid CI content")
         try:
-            # GitLab API returns double base64-encoded content
-            decoded = base64.b64decode(content).decode("utf-8")
-            # Try to decode again if it's still base64
-            try:
-                return base64.b64decode(decoded).decode("utf-8")
-            except Exception:
-                return decoded
+            # GitLab API returns single base64-encoded content
+            return base64.b64decode(content).decode("utf-8")
         except Exception:
             return content
 
@@ -100,6 +95,7 @@ class GitLabClient:
             json={
                 "branch": branch,
                 "content": base64.b64encode(content.encode()).decode(),
+                "encoding": "base64",
                 "commit_message": commit_message,
             },
         )

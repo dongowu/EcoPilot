@@ -10,7 +10,12 @@ class ActionPublisher:
         self._seen_event_ids: set[str] = set()
 
     def publish_comment(self, context: MergeRequestContext, body: str) -> bool:
-        if self.is_duplicate_event(context):
+        # Check for existing marker first (primary dedup mechanism)
+        if self._marker_exists(context, self._event_marker(context.event_id)):
+            self._seen_event_ids.add(context.event_id)
+            return False
+        # Check in-memory cache (secondary, faster check)
+        if context.event_id in self._seen_event_ids:
             return False
         marker = self._event_marker(context.event_id)
         body_with_marker = f"{body}\n\n{marker}"
@@ -55,13 +60,13 @@ class ActionPublisher:
         return f"<!-- ecopilot:event_id={event_id} -->"
 
     def is_duplicate_event(self, context: MergeRequestContext) -> bool:
-        if context.event_id in self._seen_event_ids:
-            return True
+        # Primary check: marker-based dedup (survives service restart)
         marker = self._event_marker(context.event_id)
         if self._marker_exists(context, marker):
             self._seen_event_ids.add(context.event_id)
             return True
-        return False
+        # Secondary check: in-memory cache (faster for repeated events in same session)
+        return context.event_id in self._seen_event_ids
 
     def _marker_exists(self, context: MergeRequestContext, marker: str) -> bool:
         list_notes = getattr(self._gitlab_client, "list_mr_notes", None)

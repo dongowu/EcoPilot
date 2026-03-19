@@ -14,7 +14,12 @@ def estimate_impact(
     baseline_cost_usd = round(baseline_duration_min * runner_cost_per_min, 4)
     baseline_carbon_kgco2e = round(baseline_duration_min * carbon_kg_per_min, 4)
 
+    # Calculate total savings ratio with diminishing returns
+    # (multiple optimizations don't stack linearly due to parallelism)
     total_ratio = sum(max(0.0, finding.savings_ratio) for finding in findings)
+
+    # Cap at 75% to account for parallelism and diminishing returns
+    # (e.g., cache + parallel optimizations don't save 30% each)
     if total_ratio > 0.75:
         total_ratio = 0.75
 

@@ -13,6 +13,18 @@ system_prompt: |
   - what to monitor after merge
 
   Optimize for realistic merge request decision-making rather than theoretical perfection.
+
+  OUTPUT FORMAT (YAML):
+  merge_confidence: high|medium|low
+  rollback_note: "string describing how to rollback"
+  reasoning: "string explaining the confidence level"
+  monitoring_tips: "string with what to watch after merge"
+
+  VALIDATION:
+  - merge_confidence must be exactly: high, medium, or low
+  - rollback_note must be specific and actionable
+  - reasoning must reference the specific changes
+  - monitoring_tips must be concrete (e.g., "watch pipeline duration", "check cache hit rate")
 tools:
   - read_file
   - read_files

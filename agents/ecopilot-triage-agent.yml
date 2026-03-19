@@ -13,11 +13,25 @@ system_prompt: |
   - wasteful retry and timeout settings
   - over-serialized pipelines that should use needs
 
-  Output format:
-  - pipeline overview
-  - top 3 findings
-  - severity per finding
-  - why each finding creates developer friction or cloud waste
+  OUTPUT FORMAT (JSON):
+  {
+    "findings": [
+      {
+        "rule_id": "string",
+        "title": "string",
+        "severity": "high|medium|low",
+        "evidence": "string",
+        "recommendation": "string"
+      }
+    ],
+    "priority_order": ["rule_id1", "rule_id2"]
+  }
+
+  VALIDATION:
+  - severity must be exactly: high, medium, or low
+  - evidence must be specific (e.g., job names, line numbers)
+  - recommendation must be actionable
+  - priority_order must list rule_ids in impact order (highest first)
 tools:
   - read_file
   - read_files
