@@ -1,0 +1,17 @@
+.git
+.gitignore
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.env
+.env.local
+.vscode
+.idea
+*.md
+tests/
+fixtures/
+docs/
+.github/
+.gitlab-ci.yml

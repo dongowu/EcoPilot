@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  ecopilot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecopilot-service
+    ports:
+      - "8080:8080"
+    environment:
+      # Required
+      ECOPILOT_WEBHOOK_SECRET: ${ECOPILOT_WEBHOOK_SECRET:-dev-secret-change-me}
+      ECOPILOT_GITLAB_TOKEN: ${ECOPILOT_GITLAB_TOKEN:-}
+
+      # Optional
+      ECOPILOT_GITLAB_BASE_URL: ${ECOPILOT_GITLAB_BASE_URL:-https://gitlab.com/api/v4}
+      ECOPILOT_RUNNER_COST_PER_MIN: ${ECOPILOT_RUNNER_COST_PER_MIN:-0.008}
+      ECOPILOT_CARBON_KG_PER_MIN: ${ECOPILOT_CARBON_KG_PER_MIN:-0.02}
+
+      # Anthropic/Duo integration
+      ECOPILOT_DUO_ANTHROPIC_URL: ${ECOPILOT_DUO_ANTHROPIC_URL:-}
+      ECOPILOT_DUO_ANTHROPIC_TOKEN: ${ECOPILOT_DUO_ANTHROPIC_TOKEN:-}
+      ECOPILOT_DUO_ANTHROPIC_MODEL: ${ECOPILOT_DUO_ANTHROPIC_MODEL:-claude-sonnet-4-20250514}
+
+      # GCP integration
+      ECOPILOT_GCP_PROJECT_ID: ${ECOPILOT_GCP_PROJECT_ID:-}
+      ECOPILOT_BIGQUERY_TABLE_ID: ${ECOPILOT_BIGQUERY_TABLE_ID:-}
+      ECOPILOT_GCP_BILLING_TABLE_ID: ${ECOPILOT_GCP_BILLING_TABLE_ID:-}
+
+      # Features
+      ECOPILOT_ENABLE_AUTO_LABEL: ${ECOPILOT_ENABLE_AUTO_LABEL:-false}
+      ECOPILOT_ENABLE_AUTO_ISSUE: ${ECOPILOT_ENABLE_AUTO_ISSUE:-false}
+
+    volumes:
+      - ./ecopilot:/app/ecopilot:ro
+      - ./main.py:/app/main.py:ro
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
